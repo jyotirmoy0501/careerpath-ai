@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { ArrowDown, ArrowRight, ArrowUpRight, BadgeCheck, BookOpen, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Clock3, FileText, GraduationCap, History, LayoutDashboard, LoaderCircle, LockKeyhole, LogIn, LogOut, Menu, MessageSquareText, Plus, Radar, Sparkles, Target, Trash2, Upload, User, X } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUpRight, BadgeCheck, BookOpen, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Clock3, ExternalLink, FileText, GraduationCap, History, LayoutDashboard, LoaderCircle, LockKeyhole, LogIn, LogOut, Menu, MessageSquareText, Plus, Radar, Sparkles, Target, Trash2, Upload, User, X } from 'lucide-react'
 
 type Result = { id?: string; resume_skills: string[]; job_skills: string[]; matched_skills: string[]; missing_skills: string[]; coverage_percent: number; roadmap: { week: string; focus: string }[]; summary: string; created_at?: string; job_description?: string; resume_text?: string }
 type UserProfile = { name: string; email: string }
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
 const sampleResume = 'Computer science student with experience building web applications and data projects. Skills: Python, React, SQL, Git, Pandas, JavaScript, REST APIs. Built a student dashboard and a data analysis notebook. Interested in scalable software and cloud deployment.'
 const sampleJob = 'Junior Software Engineer. Requirements: Python, React, SQL, REST APIs, FastAPI, Docker, AWS, TypeScript, and MongoDB. Build reliable product features, collaborate with engineers, and deploy services to cloud infrastructure.'
+
+const LIBRARY_RESOURCES = [
+  { category: "Backend & APIs", title: "FastAPI Official Documentation & Tutorial", desc: "Master REST API creation, Pydantic request validation, async endpoints, and CORS middleware.", tag: "Python / FastAPI", level: "Beginner", link: "https://fastapi.tiangolo.com/tutorial/" },
+  { category: "Frontend & Web", title: "React 18 & TypeScript Handbook", desc: "Learn state management, custom hooks, component typing, and building responsive SPAs.", tag: "React / TS", level: "Intermediate", link: "https://react.dev/learn" },
+  { category: "Databases", title: "MongoDB & Motor Async Driver Guide", desc: "Explore document data modeling, indexing strategies, CRUD operations, and async queries.", tag: "MongoDB", level: "Beginner", link: "https://www.mongodb.com/docs/manual/" },
+  { category: "DevOps & Cloud", title: "Docker Containerization for Beginners", desc: "Package applications into Docker containers, write Dockerfiles, and compose services.", tag: "Docker", level: "Beginner", link: "https://docs.docker.com/get-started/" },
+  { category: "AI & ML", title: "LangGraph & Stateful Agent Workflows", desc: "Build autonomous AI agents with state management, planners, memory, and tool integration.", tag: "Python / LangGraph", level: "Advanced", link: "https://langchain-ai.github.io/langgraph/" },
+  { category: "Databases", title: "SQL Querying & PostgreSQL Fundamentals", desc: "Master complex table joins, aggregate queries, indexes, and relational database schema design.", tag: "SQL / Postgres", level: "Intermediate", link: "https://www.postgresqltutorial.com/" }
+]
 
 function App() {
   const [resume, setResume] = useState<File | null>(null)
@@ -25,6 +34,8 @@ function App() {
   const [authEmail, setAuthEmail] = useState('')
 
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [showRoadmapModal, setShowRoadmapModal] = useState(false)
+  const [showLibraryModal, setShowLibraryModal] = useState(false)
   const [historyList, setHistoryList] = useState<Result[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
@@ -102,6 +113,9 @@ function App() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Analysis could not be completed.')
       setResult(data)
+      setTimeout(() => {
+        document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not connect to the API. Start the FastAPI server and try again.') }
     finally { setLoading(false) }
   }
@@ -127,7 +141,9 @@ function App() {
           <History size={17}/>Saved Queries
         </button>
         <a className="nav-link" href="#roadmap"><Target size={17}/>My roadmap</a>
-        <a className="nav-link" href="#resources"><BookOpen size={17}/>Learning library</a>
+        <button className="nav-link" onClick={() => setShowLibraryModal(true)} style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+          <BookOpen size={17}/>Learning library
+        </button>
       </nav>
       <div className="sidebar-bottom">
         <div className="upgrade-card">
@@ -300,7 +316,7 @@ function App() {
                   <div className="roadmap-item-content"><div><span className="roadmap-week">{item.week}</span>{index===0&&<span className="start-here">START HERE</span>}</div><p>{item.focus}</p></div>
                 </div>):<div className="empty-roadmap"><BadgeCheck size={20}/> Your resume covers all the skills detected in this role. Choose a more advanced job description to find your next stretch goal.</div>}
               </div>
-              <button className="roadmap-cta" onClick={()=>document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'})}>See how your roadmap works <ArrowRight size={15}/></button>
+              <button className="roadmap-cta" onClick={() => setShowRoadmapModal(true)}>See how your roadmap works <ArrowRight size={15}/></button>
             </div>
           </div>
         </section>}
@@ -407,6 +423,103 @@ function App() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+    )}
+
+    {/* ROADMAP EXPLANATION MODAL */}
+    {showRoadmapModal && (
+      <div className="modal-overlay" onClick={() => setShowRoadmapModal(false)}>
+        <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
+          <div className="modal-head">
+            <div>
+              <h3 className="modal-title">How Your 4-Week Roadmap Works</h3>
+              <span style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                A step-by-step framework to turn your skill gaps into job-ready portfolio projects.
+              </span>
+            </div>
+            <button className="modal-close" onClick={() => setShowRoadmapModal(false)}><X size={18}/></button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', background: '#f8fafc' }}>
+              <strong style={{ color: '#0f172a', display: 'block', marginBottom: '0.25rem' }}>📌 Phase 1: Core Skill Foundations (Week 1 - 2)</strong>
+              <p style={{ fontSize: '0.875rem', color: '#475569', margin: 0 }}>
+                Focus on fundamental syntax, core architecture, and building small, isolated utilities to get comfortable with the target skills.
+              </p>
+            </div>
+
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', background: '#f8fafc' }}>
+              <strong style={{ color: '#0f172a', display: 'block', marginBottom: '0.25rem' }}>🛠️ Phase 2: Integration & Building APIs (Week 2 - 3)</strong>
+              <p style={{ fontSize: '0.875rem', color: '#475569', margin: 0 }}>
+                Connect your components to databases, handle request validation, implement error handling, and build documented APIs.
+              </p>
+            </div>
+
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', background: '#f8fafc' }}>
+              <strong style={{ color: '#0f172a', display: 'block', marginBottom: '0.25rem' }}>🚀 Phase 3: Containerization & Deployment (Week 4)</strong>
+              <p style={{ fontSize: '0.875rem', color: '#475569', margin: 0 }}>
+                Package your project into Docker containers, deploy to cloud infrastructure, set up health checks, and publish code to GitHub.
+              </p>
+            </div>
+
+            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '1rem', color: '#065f46' }}>
+              <strong style={{ display: 'block', marginBottom: '0.25rem' }}>💡 Pro Tip for Interviews</strong>
+              <p style={{ fontSize: '0.85rem', margin: 0 }}>
+                Recruiters value practical implementation over theoretical knowledge. Mentioning these specific portfolio projects on your resume will prove your job readiness!
+              </p>
+            </div>
+          </div>
+
+          <button className="auth-submit-btn" style={{ marginTop: '1.25rem' }} onClick={() => setShowRoadmapModal(false)}>
+            Close & Continue My Roadmap
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* LEARNING LIBRARY MODAL */}
+    {showLibraryModal && (
+      <div className="modal-overlay" onClick={() => setShowLibraryModal(false)}>
+        <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
+          <div className="modal-head">
+            <div>
+              <h3 className="modal-title">Learning Library</h3>
+              <span style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                Handpicked, high-impact tutorials and documentation to master your missing skills.
+              </span>
+            </div>
+            <button className="modal-close" onClick={() => setShowLibraryModal(false)}><X size={18}/></button>
+          </div>
+
+          <div className="history-list" style={{ maxHeight: '440px' }}>
+            {LIBRARY_RESOURCES.map((item, idx) => (
+              <div className="history-card" key={idx} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '6px', background: '#e0f2fe', color: '#0369a1' }}>
+                    {item.tag}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                    {item.level}
+                  </span>
+                </div>
+                <strong style={{ fontSize: '0.975rem', color: '#0f172a' }}>{item.title}</strong>
+                <p style={{ fontSize: '0.85rem', color: '#475569', margin: 0, textAlign: 'left' }}>{item.desc}</p>
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.825rem', fontWeight: 600, color: '#2563eb', textDecoration: 'none', marginTop: '0.25rem' }}
+                >
+                  Open Learning Resource <ExternalLink size={13}/>
+                </a>
+              </div>
+            ))}
+          </div>
+
+          <button className="auth-submit-btn" style={{ marginTop: '1.25rem' }} onClick={() => setShowLibraryModal(false)}>
+            Close Learning Library
+          </button>
         </div>
       </div>
     )}

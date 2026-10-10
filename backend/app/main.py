@@ -41,6 +41,11 @@ SKILLS: dict[str, tuple[str, ...]] = {
     "HTML/CSS": ("html", "css"), "Tailwind CSS": ("tailwind", "tailwind css"),
     "Data visualization": ("data visualization", "visualization"), "Communication": ("communication",),
     "Problem solving": ("problem solving", "problem-solving"),
+    "Java": ("java",), "C++": ("c++", "cpp"), "C#": ("c#", "csharp"), "Go": ("golang", "go"),
+    "Rust": ("rust",), "Django": ("django",), "Flask": ("flask",), "Next.js": ("next.js", "nextjs"),
+    "Vue.js": ("vue", "vue.js"), "Angular": ("angular",), "Express": ("express", "express.js"),
+    "GraphQL": ("graphql",), "Redis": ("redis",), "MySQL": ("mysql",), "Linux": ("linux", "unix"),
+    "Flutter": ("flutter", "dart"), "System Design": ("system design",), "OOP": ("object oriented", "oop"),
 }
 
 LEARN: dict[str, tuple[str, str, str]] = {
@@ -62,19 +67,61 @@ LEARN: dict[str, tuple[str, str, str]] = {
     "PostgreSQL": ("Relational data modeling", "Design tables and queries for a job tracker", "Week 4"),
     "TypeScript": ("TypeScript for application code", "Type a reusable form and API client", "Week 2"),
     "PyTorch": ("PyTorch training loop", "Train a small model and track validation metrics", "Week 3"),
+    "Java": ("Java fundamentals & OOP", "Build a backend CLI tool in Java", "Week 1"),
+    "Django": ("Django web framework", "Build a full-stack REST API with Django", "Week 2"),
+    "Next.js": ("Next.js SSR & React framework", "Build a full-stack Next.js app", "Week 2"),
+    "Redis": ("Redis caching & key-value store", "Add caching layer to an API", "Week 3"),
+    "Linux": ("Linux shell & CLI scripting", "Write bash automation scripts", "Week 1"),
+    "System Design": ("Scalable System Design", "Design a distributed system architecture", "Week 4"),
+}
+
+
+COMMON_STOPWORDS = {
+    "and", "or", "the", "a", "an", "in", "on", "at", "to", "for", "with", "by", "about",
+    "against", "between", "into", "through", "during", "before", "after", "above", "below",
+    "from", "up", "down", "of", "off", "over", "under", "again", "further", "then", "once",
+    "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few",
+    "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same",
+    "so", "than", "too", "very", "can", "will", "just", "should", "now", "role", "job",
+    "candidate", "experience", "work", "team", "looking", "developer", "engineer",
+    "building", "required", "requirements", "skills", "responsibilities", "strong",
+    "ability", "good", "knowledge", "working", "degree", "years", "seeking", "position",
+    "senior", "junior", "lead", "staff", "full", "stack", "frontend", "backend", "software"
 }
 
 
 def extract_skills(text: str) -> list[str]:
     lowered = text.lower()
-    found = []
+    found: list[str] = []
+
+    # 1. Check catalog skills
     for skill, aliases in SKILLS.items():
         for alias in aliases:
             pattern = rf"(?<![a-z0-9+#]){re.escape(alias)}(?![a-z0-9+#])"
             if re.search(pattern, lowered):
                 found.append(skill)
                 break
-    return found
+
+    # 2. Dynamic extraction fallback & enrichment:
+    # Extract capitalized technical words, frameworks, and tools directly from text
+    words = re.findall(r'\b[A-Z][a-zA-Z0-9+#\.\-]{2,}\b', text)
+    for w in words:
+        clean = w.strip(".,;:()")
+        if clean.lower() not in COMMON_STOPWORDS and clean not in found:
+            found.append(clean)
+
+    # 3. If still empty, extract significant words from text so we never return empty
+    if not found:
+        raw_words = re.findall(r'\b[a-zA-Z0-9+#\.\-]{3,}\b', text)
+        for r in raw_words:
+            if r.lower() not in COMMON_STOPWORDS:
+                cap = r.capitalize()
+                if cap not in found:
+                    found.append(cap)
+                    if len(found) >= 5:
+                        break
+
+    return list(dict.fromkeys(found))
 
 
 def build_roadmap(gaps: list[str]) -> list[dict[str, str]]:
@@ -108,12 +155,16 @@ def analyze(resume_text: str, job_description: str) -> dict:
 
 
 @app.get("/api/health")
+@app.get("/api/health/")
+@app.get("/health")
 async def health() -> dict[str, Any]:
     mongo_status = await ping_mongodb()
     return {"status": "ok", "mongodb_connected": mongo_status}
 
 
 @app.post("/api/analyze")
+@app.post("/api/analyze/")
+@app.post("/analyze")
 async def analyze_documents(
     job_description: Annotated[str, Form()],
     resume_text: Annotated[str, Form()] = "",
@@ -132,8 +183,8 @@ async def analyze_documents(
             raise HTTPException(status_code=400, detail="This PDF could not be read. Try another file or paste its text.") from exc
     if not resume_text.strip():
         raise HTTPException(status_code=422, detail="Upload a PDF resume or paste resume text.")
-    if len(job_description.strip()) < 30:
-        raise HTTPException(status_code=422, detail="Add a fuller job description (at least 30 characters).")
+    if len(job_description.strip()) < 3:
+        raise HTTPException(status_code=422, detail="Please enter a job description.")
 
     result = analyze(resume_text, job_description)
     created_at_str = datetime.utcnow().isoformat()
